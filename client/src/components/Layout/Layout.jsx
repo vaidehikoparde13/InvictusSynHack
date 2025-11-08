@@ -34,7 +34,6 @@ const Layout = () => {
       return (
         <>
           <Link to="/worker/dashboard" className="navbar-link">Dashboard</Link>
-          <Link to="/worker/tasks" className="navbar-link">Tasks</Link>
         </>
       )
     }

@@ -37,6 +37,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 }
 
 // Public Route (redirect if already logged in)
+//here PublicRoute is a gatekeeper for the login page. It checks if the user is already authenticated. If they are, it redirects them to their respective dashboard based on their role (admin, worker, or resident). If the user is not authenticated, it allows them to access the Login component, where they can enter their credentials to log in.
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth()
 
@@ -57,7 +58,9 @@ const PublicRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
+      {/* //Provide authentication context wrapping to the whole app so that every child route has access to auth context(user info) and the router context (current url, navigation functions, etc) */}
       <Router>
+      {/* activates react routers internal state machine to use declarative routing via <Routes> and <Route> */}
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={
@@ -100,7 +103,6 @@ function App() {
             </ProtectedRoute>
           }>
             <Route path="dashboard" element={<WorkerDashboard />} />
-            <Route path="tasks" element={<WorkerTasks />} />
             <Route path="tasks/:id" element={<WorkerTaskDetail />} />
           </Route>
 

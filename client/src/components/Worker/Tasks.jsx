@@ -22,7 +22,7 @@ const Tasks = () => {
       const params = filter !== 'all' ? { status: filter } : {}
       const response = await workerAPI.getTasks(params)
       const data = response.data.data
-      setTasks(data.all || [])
+      setTasks(data.all || []) //no need
       setPendingTasks(data.pending || [])
       setCompletedTasks(data.completed || [])
     } catch (error) {
@@ -38,8 +38,8 @@ const Tasks = () => {
       'In Progress': 'badge-in-progress',
       'Worker Pending': 'badge-pending',
       Completed: 'badge-completed',
-      Resolved: 'badge-resolved',
-      Rejected: 'badge-rejected',
+      // Resolved: 'badge-resolved',
+      // Rejected: 'badge-rejected',
     }
     return <span className={`badge ${badges[status] || ''}`}>{status}</span>
   }
@@ -51,12 +51,12 @@ const Tasks = () => {
       <h1>My Tasks</h1>
 
       <div className="filters" style={{ marginBottom: '20px' }}>
-        <button
+        {/* <button
           onClick={() => setFilter('all')}
           className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
         >
           All Tasks
-        </button>
+        </button> */}
         <button
           onClick={() => setFilter('pending')}
           className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`}

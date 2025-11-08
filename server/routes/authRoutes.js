@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 
 /**
@@ -29,17 +30,33 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create user
-    const user = await User.create({
-      student_id,
+    // Define user data with conditional fields
+    const newUserData = {
       email,
       password,
       full_name,
       role,
       phone,
-      floor,
-      room
-    });
+      student_id:
+        role === 'resident'
+          ? student_id
+          : `SYS-${uuidv4().split('-')[0].toUpperCase()}`,
+      floor: role === 'resident' ? floor : null,
+      room: role === 'resident' ? room : null,
+    };
+
+    let user;
+    try {
+      user = await User.create(newUserData);
+    } catch (dbError) {
+      if (dbError.code === '23505') {
+        let message = 'Duplicate entry';
+        if (dbError.detail?.includes('student_id')) message = 'Student ID already exists';
+        else if (dbError.detail?.includes('email')) message = 'Email already exists';
+        return res.status(400).json({ success: false, message });
+      }
+      throw dbError;
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -48,7 +65,7 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
@@ -67,7 +84,7 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Server error during registration',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
@@ -91,7 +108,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Find user
     const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({
@@ -100,7 +116,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Check if user is active
     if (!user.is_active) {
       return res.status(401).json({
         success: false,
@@ -108,7 +123,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Verify password
     const isPasswordValid = await User.verifyPassword(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -117,14 +131,13 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
@@ -143,7 +156,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Server error during login',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
@@ -159,13 +172,13 @@ router.post('/login', async (req, res) => {
 router.get('/me', require('../middleware/auth').authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: user
     });
   } catch (error) {
     console.error('Get user error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Server error',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
@@ -174,4 +187,3 @@ router.get('/me', require('../middleware/auth').authenticate, async (req, res) =
 });
 
 module.exports = router;
-

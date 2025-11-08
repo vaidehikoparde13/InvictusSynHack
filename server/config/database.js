@@ -1,33 +1,26 @@
+require('dotenv').config();
 const { Pool } = require('pg');
+console.log('🧭 Current working directory:', process.cwd());
+
+console.log('🔍 Loaded DATABASE_URL:', process.env.DATABASE_URL ? '✅ Present' : '❌ Missing');
 
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'vnit_grievance',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: process.env.DB_PORT || 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
-// Test connection
-pool.on('connect', () => {
-  console.log('PostgreSQL connected');
-});
-
+pool.on('connect', () => console.log('✅ Connected to Neon PostgreSQL Cloud'));
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('❌ Unexpected PostgreSQL error:', err.message);
   process.exit(-1);
 });
 
-// Query helper function
 const query = async (text, params) => {
-  const start = Date.now();
   try {
     const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
     return res;
   } catch (error) {
-    console.error('Query error', { text, error: error.message });
+    console.error('Query error:', error.message);
     throw error;
   }
 };

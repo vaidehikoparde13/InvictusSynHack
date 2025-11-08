@@ -7,19 +7,17 @@ import { format } from 'date-fns'
 const Complaints = () => {
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
-    status: '',
-    category: '',
-    page: 1,
-  })
+  const [filters, setFilters] = useState({ status: '', category: '', page: 1 })
   const [pagination, setPagination] = useState({})
   const [showForm, setShowForm] = useState(false)
+  const [problemType, setProblemType] = useState('') // NEW: Common or Room
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     subcategory: '',
     priority: 'Medium',
+    image: null,
   })
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
@@ -50,9 +48,10 @@ const Complaints = () => {
   }
 
   const handleFormChange = (e) => {
+    const { name, value, files } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: files ? files[0] : value,
     })
   }
 
@@ -61,15 +60,27 @@ const Complaints = () => {
     setSubmitting(true)
 
     try {
-      const response = await residentAPI.createComplaint(formData)
+      // Prepare payload for backend
+      const complaintData = new FormData()
+      complaintData.append('title', formData.title)
+      complaintData.append('description', formData.description)
+      complaintData.append('category', formData.category)
+      complaintData.append('subcategory', formData.subcategory)
+      complaintData.append('priority', formData.priority)
+      if (formData.image) complaintData.append('files', formData.image)
+
+      const response = await residentAPI.createComplaint(complaintData)
+
       toast.success('Complaint submitted successfully!')
       setShowForm(false)
+      setProblemType('')
       setFormData({
         title: '',
         description: '',
         category: '',
         subcategory: '',
         priority: 'Medium',
+        image: null,
       })
       fetchComplaints()
       navigate(`/resident/complaints/${response.data.data.id}`)
@@ -102,65 +113,125 @@ const Complaints = () => {
         </button>
       </div>
 
+      {/* Complaint Submission Section */}
       {showForm && (
         <div className="card" style={{ marginBottom: '20px' }}>
           <h2>Submit New Complaint</h2>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Title *</label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleFormChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Description *</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleFormChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Category *</label>
-              <select name="category" value={formData.category} onChange={handleFormChange} required>
-                <option value="">Select category</option>
-                <option value="Infrastructure">Infrastructure</option>
-                <option value="Hostel">Hostel</option>
-                <option value="Canteen">Canteen</option>
-                <option value="Library">Library</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Subcategory</label>
-              <input
-                type="text"
-                name="subcategory"
-                value={formData.subcategory}
-                onChange={handleFormChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Priority</label>
-              <select name="priority" value={formData.priority} onChange={handleFormChange}>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Submitting...' : 'Submit Complaint'}
-            </button>
-          </form>
+
+          {!problemType ? (
+            <>
+              <p>Select the type of issue you want to report:</p>
+              <button
+                onClick={() => setProblemType('common')}
+                className="btn btn-outline-primary"
+                style={{ marginRight: '10px' }}
+              >
+                🏢 Common Problem
+              </button>
+              <button onClick={() => setProblemType('room')} className="btn btn-outline-secondary">
+                🚪 Personal Room Issue
+              </button>
+            </>
+          ) : (
+            <form onSubmit={handleSubmit} encType="multipart/form-data">
+              <div className="form-group">
+                <label>Title *</label>
+                <input type="text" name="title" value={formData.title} onChange={handleFormChange} required />
+              </div>
+
+              {problemType === 'common' && (
+                <>
+                  <div className="form-group">
+                    <label>Category *</label>
+                    <select name="category" value={formData.category} onChange={handleFormChange} required>
+                      <option value="">Select Category</option>
+                      <option value="Washroom">Washroom</option>
+                      <option value="Hallway">Hallway</option>
+                      <option value="Canteen">Canteen</option>
+                      <option value="Mess">Mess</option>
+                      <option value="Library">Library</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Subcategory *</label>
+                    <select name="subcategory" value={formData.subcategory} onChange={handleFormChange} required>
+                      <option value="">Select Subcategory</option>
+                      <option value="Light">Light</option>
+                      <option value="Fan">Fan</option>
+                      <option value="Water Leakage">Water Leakage</option>
+                      <option value="Cleaning">Cleaning</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Complaint *</label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleFormChange}
+                      placeholder="Describe the issue (e.g., Light not working near washroom)"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              {problemType === 'room' && (
+                <>
+                  <div className="form-group">
+                    <label>Category</label>
+                    <input type="text" name="category" value="Room" readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label>Subcategory *</label>
+                    <select name="subcategory" value={formData.subcategory} onChange={handleFormChange} required>
+                      <option value="">Select Subcategory</option>
+                      <option value="Light">Light</option>
+                      <option value="Fan">Fan</option>
+                      <option value="Plug Point">Plug Point</option>
+                      <option value="Window">Window</option>
+                      <option value="Cleaning">Cleaning</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Description *</label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleFormChange}
+                      placeholder="Describe the room issue (e.g., Fan not working)"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="form-group">
+                <label>Priority *</label>
+                <select name="priority" value={formData.priority} onChange={handleFormChange}>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Urgent">Urgent</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Upload Image (Optional)</label>
+                <input type="file" name="image" accept="image/*" onChange={handleFormChange} />
+              </div>
+
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit Complaint'}
+              </button>
+            </form>
+          )}
         </div>
       )}
 
+      {/* Complaint List Section */}
       <div className="filters">
         <div className="filter-group">
           <label>Status</label>
@@ -178,8 +249,9 @@ const Complaints = () => {
           <label>Category</label>
           <select name="category" value={filters.category} onChange={handleFilterChange}>
             <option value="">All</option>
-            <option value="Infrastructure">Infrastructure</option>
-            <option value="Hostel">Hostel</option>
+            <option value="Room">Room</option>
+            <option value="Washroom">Washroom</option>
+            <option value="Hallway">Hallway</option>
             <option value="Canteen">Canteen</option>
             <option value="Library">Library</option>
             <option value="Other">Other</option>
@@ -236,4 +308,3 @@ const Complaints = () => {
 }
 
 export default Complaints
-
