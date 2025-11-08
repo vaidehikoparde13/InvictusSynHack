@@ -7,89 +7,109 @@ import './Auth.css'
 
 const Register = () => {
   const [formData, setFormData] = useState({
+    full_name: '',
     email: '',
     password: '',
-    full_name: '',
-    role: 'resident',
-    student_id: '',
     phone: '',
-    floor: '',
-    room: '',
+    student_id: '',
+    role: 'Student',
+    hostel_block: 'Dr. Anandi Bai Joshi', // ✅ Default and only hostel
+    floor: '', // ✅ New field
+    room_number: '',
   })
+
   const [loading, setLoading] = useState(false)
   const [apiConnected, setApiConnected] = useState(null)
   const { register } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Check if backend is running
     testAPIConnection().then(connected => {
       setApiConnected(connected)
       if (!connected) {
-        toast.error('Cannot connect to backend server. Please ensure the backend is running on port 5000.')
+        toast.error('Cannot connect to backend server. Please ensure it is running.')
       }
     })
   }, [])
 
+  // ✅ Generate room numbers dynamically based on floor
+  const getRoomNumbers = (floor) => {
+    let rooms = []
+    if (!floor) return rooms
+
+    const start = floor * 100 + 1
+    const end = floor * 100 + 52 // 52 rooms per floor
+    for (let i = start; i <= end; i++) {
+      rooms.push(i.toString())
+    }
+    return rooms
+  }
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'role' && value !== 'Student'
+        ? { hostel_block: '', floor: '', room_number: '', student_id: '' }
+        : {}),
+      ...(name === 'floor' ? { room_number: '' } : {}), // reset room when floor changes
+    }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
 
-    // ✅ Mobile number validation (10 digits)
-    const phoneRegex = /^[0-9]{10}$/
-    if (!phoneRegex.test(formData.phone)) {
-      toast.error('Please enter a valid 10-digit mobile number.')
-      setLoading(false)
-      return
+    const dataToSend = { ...formData }
+
+    // 🧹 Remove student-specific fields for non-students
+    if (formData.role !== 'Student') {
+      delete dataToSend.hostel_block
+      delete dataToSend.room_number
+      delete dataToSend.student_id
+      delete dataToSend.floor
     }
 
     try {
-      const result = await register(formData)
-
+      const result = await register(dataToSend)
       if (result.success) {
         toast.success('Registration successful!')
-        const user = JSON.parse(localStorage.getItem('user'))
-        if (user.role === 'admin') {
-          navigate('/admin/dashboard')
-        } else if (user.role === 'worker') {
-          navigate('/worker/dashboard')
-        } else {
-          navigate('/resident/dashboard')
-        }
+        navigate('/login')
       } else {
-        console.error('Registration failed:', result.message)
-        toast.error(result.message || 'Registration failed. Please check your details and try again.')
+        toast.error(result.message || 'Registration failed.')
       }
     } catch (error) {
-      console.error('Registration error:', error)
-      toast.error('An unexpected error occurred. Please try again.')
+      toast.error('Unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  const roomOptions =
+    formData.role === 'Student' && formData.floor
+      ? getRoomNumbers(formData.floor)
+      : []
+
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1>Register</h1>
+        <h1>Welcome</h1>
+        <p>Sign in to your account or create a new one</p>
+
         {apiConnected === false && (
-          <div className="error" style={{ marginBottom: '20px' }}>
-            ⚠️ Backend server is not running. Please start the backend server first.
+          <div className="error">
+            ⚠️ Backend server not running. Please start it first.
           </div>
         )}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Full Name *</label>
+            <label>Full Name</label>
             <input
               type="text"
               name="full_name"
+              placeholder="Enter your name"
               value={formData.full_name}
               onChange={handleChange}
               required
@@ -97,10 +117,11 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Email *</label>
+            <label>Email</label>
             <input
               type="email"
               name="email"
+              placeholder="your.email@vnit.ac.in"
               value={formData.email}
               onChange={handleChange}
               required
@@ -108,10 +129,11 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Password *</label>
+            <label>Password</label>
             <input
               type="password"
               name="password"
+              placeholder="Minimum 6 characters"
               value={formData.password}
               onChange={handleChange}
               required
@@ -119,65 +141,101 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Role *</label>
-            <select name="role" value={formData.role} onChange={handleChange} required>
-              <option value="resident">Resident</option>
-              <option value="admin">Admin</option>
-              <option value="worker">Worker</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Student ID</label>
-            <input
-              type="text"
-              name="student_id"
-              value={formData.student_id}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Phone *</label>
+            <label>Contact Number</label>
             <input
               type="tel"
               name="phone"
+              placeholder="Enter your mobile number"
               value={formData.phone}
-              onChange={(e) => {
-                // Allow only digits, max 10
-                const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                setFormData({ ...formData, phone: value })
-              }}
-              placeholder="Enter 10-digit mobile number"
+              onChange={handleChange}
+              pattern="[0-9]{10}"
+              maxLength="10"
               required
             />
-            <small style={{ color: 'gray' }}>Must be a 10-digit number</small>
           </div>
 
           <div className="form-group">
-            <label>Floor</label>
-            <input
-              type="text"
-              name="floor"
-              value={formData.floor}
-              onChange={handleChange}
-            />
+            <label>Role</label>
+            <select name="role" value={formData.role} onChange={handleChange} required>
+              <option value="Student">Student</option>
+              <option value="Admin">Admin</option>
+              <option value="Worker">Maintenance / Worker</option>
+            </select>
           </div>
 
-          <div className="form-group">
-            <label>Room</label>
-            <input
-              type="text"
-              name="room"
-              value={formData.room}
-              onChange={handleChange}
-            />
-          </div>
+          {/* ✅ Student-specific fields */}
+          {formData.role === 'Student' && (
+            <>
+              <div className="form-group">
+                <label>Student ID</label>
+                <input
+                  type="text"
+                  name="student_id"
+                  placeholder="Enter your Student ID"
+                  value={formData.student_id}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Hostel Block</label>
+                <input
+                  type="text"
+                  name="hostel_block"
+                  value="Dr. Anandi Bai Joshi"
+                  readOnly
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Floor</label>
+                <select
+                  name="floor"
+                  value={formData.floor}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Floor</option>
+                  {[...Array(12).keys()].map(num => (
+                    <option key={num} value={num}>
+                      Floor {num}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {formData.floor && (
+                <div className="form-group">
+                  <label>Room Number</label>
+                  <select
+                    name="room_number"
+                    value={formData.room_number}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Room</option>
+                    {roomOptions.map(room => (
+                      <option key={room} value={room}>
+                        {room}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
+
+        <div className="demo-info">
+          <p>
+            ℹ️ <strong>Demo Accounts:</strong> You can create test accounts for different roles to explore the system.
+          </p>
+        </div>
 
         <p className="auth-link">
           Already have an account? <a href="/login">Login</a>
