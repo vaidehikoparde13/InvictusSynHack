@@ -42,6 +42,14 @@ const Register = () => {
     e.preventDefault()
     setLoading(true)
 
+    // ✅ Mobile number validation (10 digits)
+    const phoneRegex = /^[0-9]{10}$/
+    if (!phoneRegex.test(formData.phone)) {
+      toast.error('Please enter a valid 10-digit mobile number.')
+      setLoading(false)
+      return
+    }
+
     try {
       const result = await register(formData)
 
@@ -87,6 +95,7 @@ const Register = () => {
               required
             />
           </div>
+
           <div className="form-group">
             <label>Email *</label>
             <input
@@ -97,6 +106,7 @@ const Register = () => {
               required
             />
           </div>
+
           <div className="form-group">
             <label>Password *</label>
             <input
@@ -107,6 +117,7 @@ const Register = () => {
               required
             />
           </div>
+
           <div className="form-group">
             <label>Role *</label>
             <select name="role" value={formData.role} onChange={handleChange} required>
@@ -115,6 +126,7 @@ const Register = () => {
               <option value="worker">Worker</option>
             </select>
           </div>
+
           <div className="form-group">
             <label>Student ID</label>
             <input
@@ -124,15 +136,24 @@ const Register = () => {
               onChange={handleChange}
             />
           </div>
+
           <div className="form-group">
-            <label>Phone</label>
+            <label>Phone *</label>
             <input
               type="tel"
               name="phone"
               value={formData.phone}
-              onChange={handleChange}
+              onChange={(e) => {
+                // Allow only digits, max 10
+                const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                setFormData({ ...formData, phone: value })
+              }}
+              placeholder="Enter 10-digit mobile number"
+              required
             />
+            <small style={{ color: 'gray' }}>Must be a 10-digit number</small>
           </div>
+
           <div className="form-group">
             <label>Floor</label>
             <input
@@ -142,6 +163,7 @@ const Register = () => {
               onChange={handleChange}
             />
           </div>
+
           <div className="form-group">
             <label>Room</label>
             <input
@@ -151,10 +173,12 @@ const Register = () => {
               onChange={handleChange}
             />
           </div>
+
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
+
         <p className="auth-link">
           Already have an account? <a href="/login">Login</a>
         </p>
@@ -164,4 +188,3 @@ const Register = () => {
 }
 
 export default Register
-
