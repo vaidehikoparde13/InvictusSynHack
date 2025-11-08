@@ -10,27 +10,7 @@ const User = require('../models/User');
  */
 router.post('/register', async (req, res) => {
   try {
-    const { student_id, email, password, full_name, role, phone, floor, room } = req.body;
-
-    // Validation
-    if (!email || !password || !full_name || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email, password, full_name, and role'
-      });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this email already exists'
-      });
-    }
-
-    // Create user
-    const user = await User.create({
+    const {
       student_id,
       email,
       password,
@@ -38,19 +18,60 @@ router.post('/register', async (req, res) => {
       role,
       phone,
       floor,
-      room
+      room,
+    } = req.body;
+
+    // ✅ Basic field validation
+    if (!email || !password || !full_name || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email, password, full name, and role.',
+      });
+    }
+
+    // ✅ Email normalization
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ✅ Validate phone number (optional but must be valid if provided)
+    const phoneRegex = /^[0-9]{10}$/;
+    if (phone && !phoneRegex.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number. Must be a 10-digit number.',
+      });
+    }
+
+    // ✅ Check if user already exists
+    const existingUser = await User.findByEmail(normalizedEmail);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'A user with this email already exists.',
+      });
+    }
+
+    // ✅ Create new user
+    const user = await User.create({
+      student_id,
+      email: normalizedEmail,
+      password,
+      full_name: full_name.trim(),
+      role,
+      phone: phone?.trim(),
+      floor,
+      room,
     });
 
-    // Generate JWT token
+    // ✅ Generate JWT token
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully.',
       data: {
         token,
         user: {
@@ -61,16 +82,19 @@ router.post('/register', async (req, res) => {
           role: user.role,
           phone: user.phone,
           floor: user.floor,
-          room: user.room
-        }
-      }
+          room: user.room,
+        },
+      },
     });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      message: 'Server error during registration.',
+      error:
+        process.env.NODE_ENV === 'development'
+          ? error.message
+          : 'Internal server error.',
     });
   }
 });
@@ -87,46 +111,51 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password'
+        message: 'Please provide both email and password.',
       });
     }
 
-    // Find user
-    const user = await User.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ✅ Find user
+    const user = await User.findByEmail(normalizedEmail);
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Invalid credentials.',
       });
     }
 
-    // Check if user is active
-    if (!user.is_active) {
+    // ✅ Check if user is active
+    if (user.is_active === false) {
       return res.status(401).json({
         success: false,
-        message: 'Account is inactive. Please contact administrator.'
+        message: 'Account is inactive. Please contact the administrator.',
       });
     }
 
-    // Verify password
-    const isPasswordValid = await User.verifyPassword(password, user.password_hash);
+    // ✅ Verify password
+    const isPasswordValid = await User.verifyPassword(
+      password,
+      user.password_hash
+    );
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Invalid credentials.',
       });
     }
 
-    // Generate JWT token
+    // ✅ Generate JWT token
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: 'Login successful.',
       data: {
         token,
         user: {
@@ -137,16 +166,19 @@ router.post('/login', async (req, res) => {
           role: user.role,
           phone: user.phone,
           floor: user.floor,
-          room: user.room
-        }
-      }
+          room: user.room,
+        },
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during login',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      message: 'Server error during login.',
+      error:
+        process.env.NODE_ENV === 'development'
+          ? error.message
+          : 'Internal server error.',
     });
   }
 });
@@ -156,22 +188,28 @@ router.post('/login', async (req, res) => {
  * @desc    Get current user
  * @access  Private
  */
-router.get('/me', require('../middleware/auth').authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    res.status(200).json({
-      success: true,
-      data: user
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+router.get(
+  '/me',
+  require('../middleware/auth').authenticate,
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id);
+      res.status(200).json({
+        success: true,
+        data: user,
+      });
+    } catch (error) {
+      console.error('Get user error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Server error.',
+        error:
+          process.env.NODE_ENV === 'development'
+            ? error.message
+            : 'Internal server error.',
+      });
+    }
   }
-});
+);
 
 module.exports = router;
-
