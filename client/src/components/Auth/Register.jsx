@@ -29,13 +29,37 @@ const Register = () => {
     })
   }, [])
 
+  // ✅ Function to generate room numbers dynamically
+  const getRoomNumbers = (hostel) => {
+    let rooms = []
+    if (hostel === 'Kalpana Chawla') {
+      const blocks = ['G', 'F', 'S', 'T']
+      blocks.forEach(block => {
+        for (let i = 1; i <= 23; i++) {
+          const room = `${block}-${i.toString().padStart(2, '0')}`
+          rooms.push(room)
+        }
+      })
+    } else if (hostel === 'Dr. Anandi Bai Joshi') {
+      // floors: 2xx to 11xx
+      for (let floor = 2; floor <= 11; floor++) {
+        const start = floor * 100 + 1
+        const end = floor * 100 + (floor === 2 ? 52 : 52) // all have 52 rooms
+        for (let i = start; i <= end; i++) {
+          rooms.push(i.toString())
+        }
+      }
+    }
+    return rooms
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      // if role changes, reset room/hostel if not Student
       ...(name === 'role' && value !== 'Student' ? { hostel_block: '', room_number: '' } : {}),
+      ...(name === 'hostel_block' ? { room_number: '' } : {}), // reset room if hostel changes
     }))
   }
 
@@ -43,7 +67,6 @@ const Register = () => {
     e.preventDefault()
     setLoading(true)
 
-    // prepare clean data
     const dataToSend = { ...formData }
     if (formData.role !== 'Student') {
       delete dataToSend.hostel_block
@@ -64,6 +87,12 @@ const Register = () => {
       setLoading(false)
     }
   }
+
+  // Get rooms dynamically based on selected hostel
+  const roomOptions =
+    formData.role === 'Student' && formData.hostel_block
+      ? getRoomNumbers(formData.hostel_block)
+      : []
 
   return (
     <div className="auth-container">
@@ -123,7 +152,7 @@ const Register = () => {
             </select>
           </div>
 
-          {/* Conditionally render these only for Students */}
+          {/* Show hostel and room only for students */}
           {formData.role === 'Student' && (
             <>
               <div className="form-group">
@@ -135,24 +164,29 @@ const Register = () => {
                   required
                 >
                   <option value="">Select Hostel Block</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
+                  <option value="Kalpana Chawla">Kalpana Chawla</option>
+                  <option value="Dr. Anandi Bai Joshi">Dr. Anandi Bai Joshi</option>
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Room Number</label>
-                <input
-                  type="text"
-                  name="room_number"
-                  placeholder="e.g., 101"
-                  value={formData.room_number}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+              {formData.hostel_block && (
+                <div className="form-group">
+                  <label>Room Number</label>
+                  <select
+                    name="room_number"
+                    value={formData.room_number}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Room</option>
+                    {roomOptions.map(room => (
+                      <option key={room} value={room}>
+                        {room}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </>
           )}
 
