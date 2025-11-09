@@ -4,7 +4,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL,  // your backend server URL
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -37,18 +38,21 @@ api.interceptors.response.use(
   }
 )
 
-// Auth API
+// ====================== AUTH API ======================
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
 }
 
-// Resident API
+// ====================== RESIDENT API ======================
 export const residentAPI = {
+  // Complaints
   getComplaints: (params) => api.get('/resident/complaints', { params }),
   getComplaint: (id) => api.get(`/resident/complaints/${id}`),
   createComplaint: (data) => api.post('/resident/complaints', data),
+
+  // Upload complaint attachments
   uploadAttachments: (id, files) => {
     const formData = new FormData()
     files.forEach(file => formData.append('files', file))
@@ -56,13 +60,18 @@ export const residentAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  // Notifications
   getNotifications: (unread_only) => 
     api.get('/resident/notifications', { params: { unread_only } }),
   markNotificationRead: (id) => 
     api.put(`/resident/notifications/${id}/read`),
+
+  // 🆕 Dashboard endpoint (for individual resident stats)
+  getResidentDashboard: () => api.get('/resident/dashboard'),
 }
 
-// Admin API
+// ====================== ADMIN API ======================
 export const adminAPI = {
   getComplaints: (params) => api.get('/admin/complaints', { params }),
   getComplaint: (id) => api.get(`/admin/complaints/${id}`),
@@ -79,7 +88,7 @@ export const adminAPI = {
     api.post(`/admin/complaints/${id}/comments`, { comment }),
 }
 
-// Worker API
+// ====================== WORKER API ======================
 export const workerAPI = {
   getTasks: (params) => api.get('/worker/tasks', { params }),
   getTask: (id) => api.get(`/worker/tasks/${id}`),
@@ -99,4 +108,3 @@ export const workerAPI = {
 }
 
 export default api
-

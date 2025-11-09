@@ -73,8 +73,8 @@ const TaskDetail = () => {
       'In Progress': 'badge-in-progress',
       'Worker Pending': 'badge-pending',
       Completed: 'badge-completed',
-      Resolved: 'badge-resolved',
-      Rejected: 'badge-rejected',
+      // Resolved: 'badge-resolved',
+      // Rejected: 'badge-rejected',
     }
     return <span className={`badge ${badges[status] || ''}`}>{status}</span>
   }
@@ -134,10 +134,9 @@ const TaskDetail = () => {
           <div className="form-group">
             <label>Status *</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="Assigned">Assigned</option>
               <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Rejected">Rejected</option>
+              <option value="Resolved">Completed</option>
+              <option value="Cannot be Resolved">Rejected</option>
             </select>
           </div>
           {status === 'Completed' && (

@@ -63,57 +63,130 @@ const ComplaintDetail = () => {
 
   return (
     <div className="container" style={{ padding: '20px' }}>
-      <button onClick={() => navigate('/resident/complaints')} className="btn btn-secondary" style={{ marginBottom: '20px' }}>
+      <button
+        onClick={() => navigate('/resident/complaints')}
+        className="btn btn-secondary"
+        style={{ marginBottom: '20px' }}
+      >
         ← Back to Complaints
       </button>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '20px' }}>
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'start',
+            marginBottom: '20px',
+          }}
+        >
           <div>
             <h1>{complaint.title}</h1>
             <p style={{ color: '#666', marginTop: '5px' }}>
               Created: {format(new Date(complaint.created_at), 'MMM dd, yyyy HH:mm')}
             </p>
           </div>
-          <div>
-            {getStatusBadge(complaint.status)}
-          </div>
+          <div>{getStatusBadge(complaint.status)}</div>
         </div>
 
+        {/* Complaint Details */}
         <div style={{ marginBottom: '20px' }}>
           <h3>Details</h3>
-          <p><strong>Category:</strong> {complaint.category}</p>
-          {complaint.subcategory && <p><strong>Subcategory:</strong> {complaint.subcategory}</p>}
-          <p><strong>Priority:</strong> {complaint.priority}</p>
-          {complaint.floor && <p><strong>Floor:</strong> {complaint.floor}</p>}
-          {complaint.room && <p><strong>Room:</strong> {complaint.room}</p>}
-          {complaint.worker_name && <p><strong>Assigned Worker:</strong> {complaint.worker_name}</p>}
+
+          {/* Complaint Type */}
+          <p>
+            <strong>Complaint Type:</strong>{' '}
+            {complaint.room ? 'Room Complaint' : 'Common Complaint'}
+          </p>
+
+          {/* Category */}
+          <p>
+            <strong>Category:</strong> {complaint.category}
+          </p>
+
+          {/* Subcategory (only if exists, e.g., Washroom T1) */}
+          {complaint.subcategory && (
+            <p>
+              <strong>Subcategory:</strong> {complaint.subcategory}
+            </p>
+          )}
+
+          {/* Priority */}
+          <p>
+            <strong>Priority:</strong> {complaint.priority}
+          </p>
+
+          {/* Floor */}
+          {complaint.floor && (
+            <p>
+              <strong>Floor:</strong> {complaint.floor}
+            </p>
+          )}
+
+          {/* Room (only for room complaints) */}
+          {complaint.room && (
+            <p>
+              <strong>Room:</strong> {complaint.room}
+            </p>
+          )}
+
+          {/* Assigned Worker */}
+          {complaint.worker_name && (
+            <p>
+              <strong>Assigned Worker:</strong> {complaint.worker_name}
+            </p>
+          )}
         </div>
 
+        {/* Description */}
         <div style={{ marginBottom: '20px' }}>
           <h3>Description</h3>
           <p>{complaint.description}</p>
         </div>
 
+        {/* Resolution Section */}
         {complaint.resolution && (
-          <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#d4edda', borderRadius: '5px' }}>
+          <div
+            style={{
+              marginBottom: '20px',
+              padding: '15px',
+              backgroundColor: '#d4edda',
+              borderRadius: '5px',
+            }}
+          >
             <h3>Resolution</h3>
             <p>{complaint.resolution}</p>
             {complaint.resolved_at && (
-              <p style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
+              <p
+                style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  marginTop: '10px',
+                }}
+              >
                 Resolved: {format(new Date(complaint.resolved_at), 'MMM dd, yyyy')}
               </p>
             )}
           </div>
         )}
 
+        {/* Rejection Section */}
         {complaint.rejection_reason && (
-          <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8d7da', borderRadius: '5px' }}>
+          <div
+            style={{
+              marginBottom: '20px',
+              padding: '15px',
+              backgroundColor: '#f8d7da',
+              borderRadius: '5px',
+            }}
+          >
             <h3>Rejection Reason</h3>
             <p>{complaint.rejection_reason}</p>
           </div>
         )}
 
+        {/* Attachments */}
         <div style={{ marginBottom: '20px' }}>
           <h3>Attachments</h3>
           <input
@@ -128,7 +201,11 @@ const ComplaintDetail = () => {
             <div>
               {files.map((file, index) => (
                 <div key={index} style={{ marginBottom: '10px' }}>
-                  <a href={`http://localhost:5000${file.file_path}`} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={`http://localhost:5000${file.file_path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {file.filename}
                   </a>
                 </div>
@@ -137,12 +214,24 @@ const ComplaintDetail = () => {
           )}
         </div>
 
+        {/* Comments Section */}
         {complaint.comments && complaint.comments.length > 0 && (
           <div>
             <h3>Comments</h3>
             {complaint.comments.map((comment, index) => (
-              <div key={index} style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
-                <p><strong>{comment.full_name || comment.commented_by}</strong> - {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}</p>
+              <div
+                key={index}
+                style={{
+                  marginBottom: '15px',
+                  padding: '10px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '5px',
+                }}
+              >
+                <p>
+                  <strong>{comment.full_name || comment.commented_by}</strong> -{' '}
+                  {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
+                </p>
                 <p>{comment.comment}</p>
               </div>
             ))}
@@ -154,4 +243,3 @@ const ComplaintDetail = () => {
 }
 
 export default ComplaintDetail
-

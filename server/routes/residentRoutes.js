@@ -15,7 +15,6 @@ const path = require('path');
  */
 router.post('/complaints', authenticate, async (req, res) => {
   try {
-    // Check if user is a resident
     if (req.user.role !== 'resident') {
       return res.status(403).json({
         success: false,
@@ -25,15 +24,13 @@ router.post('/complaints', authenticate, async (req, res) => {
 
     const { title, description, category, subcategory, floor, room, priority } = req.body;
 
-    // Validation
-    if (!title || !description || !category) {
+    if (!description || !category) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide title, description, and category'
+        message: 'Please provide description and category'
       });
     }
 
-    // Create complaint
     const complaint = await Complaint.create({
       resident_id: req.user.id,
       title,
@@ -45,9 +42,8 @@ router.post('/complaints', authenticate, async (req, res) => {
       priority: priority || 'Medium'
     });
 
-    // Create notification for admin
     await Notification.create({
-      user_id: req.user.id, // Will need to get admin IDs in real implementation
+      user_id: req.user.id,
       complaint_id: complaint.id,
       title: 'New Complaint Submitted',
       message: `A new complaint "${title}" has been submitted.`,
@@ -77,18 +73,12 @@ router.post('/complaints', authenticate, async (req, res) => {
 router.post('/complaints/:id/attachments', authenticate, upload.array('files', 5), async (req, res) => {
   try {
     if (req.user.role !== 'resident') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
-      return res.status(404).json({
-        success: false,
-        message: 'Complaint not found'
-      });
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
 
     if (complaint.resident_id !== req.user.id) {
@@ -137,20 +127,23 @@ router.post('/complaints/:id/attachments', authenticate, upload.array('files', 5
 router.get('/complaints', authenticate, async (req, res) => {
   try {
     if (req.user.role !== 'resident') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     const { status, category, page = 1, limit = 10 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const filters = { status, category, limit: parseInt(limit), offset };
-    const complaints = await Complaint.findByResidentId(req.user.id, filters);
-    const total = await Complaint.count({ resident_id: req.user.id, status: filters.status, category: filters.category });
+    const filters = {};
+    if (status) filters.status = status;
+    if (category) filters.category = category;
 
-    // Get attachments for each complaint
+    const complaints = await Complaint.findByResidentId(req.user.id, { ...filters, limit, offset });
+    const total = await Complaint.count({
+      resident_id: req.user.id,
+      ...(filters.status && { status: filters.status }),
+      ...(filters.category && { category: filters.category })
+    });
+
     for (const complaint of complaints) {
       complaint.attachments = await Attachment.findByComplaintId(complaint.id);
     }
@@ -178,118 +171,43 @@ router.get('/complaints', authenticate, async (req, res) => {
 });
 
 /**
- * @route   GET /api/resident/complaints/:id
- * @desc    Get a single complaint with details
+ * @route   GET /api/resident/dashboard
+ * @desc    Resident dashboard - stats and recent complaints
  * @access  Private (Resident)
  */
-router.get('/complaints/:id', authenticate, async (req, res) => {
+router.get('/dashboard', authenticate, async (req, res) => {
   try {
     if (req.user.role !== 'resident') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const complaint = await Complaint.findById(req.params.id);
-    if (!complaint) {
-      return res.status(404).json({
-        success: false,
-        message: 'Complaint not found'
-      });
-    }
+    const complaints = await Complaint.findByResidentId(req.user.id, {});
 
-    if (complaint.resident_id !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. This complaint does not belong to you.'
-      });
-    }
-
-    // Get attachments and comments
-    complaint.attachments = await Attachment.findByComplaintId(complaint.id);
-    complaint.comments = await Comment.findByComplaintId(complaint.id);
+    const total = complaints.length;
+    const pending = complaints.filter(c => c.status === 'Pending').length;
+    const inProgress = complaints.filter(c => ['In Progress', 'Assigned'].includes(c.status)).length;
+    const resolved = complaints.filter(c => ['Resolved', 'Completed'].includes(c.status)).length;
 
     res.status(200).json({
       success: true,
-      data: complaint
+      data: {
+        total,
+        pending,
+        inProgress,
+        resolved,
+        recentComplaints: complaints
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 5)
+      }
     });
   } catch (error) {
-    console.error('Error fetching complaint:', error);
+    console.error('Error fetching resident dashboard:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while fetching complaint',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-});
-
-/**
- * @route   GET /api/resident/notifications
- * @desc    Get notifications for the resident
- * @access  Private (Resident)
- */
-router.get('/notifications', authenticate, async (req, res) => {
-  try {
-    if (req.user.role !== 'resident') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    const { unread_only } = req.query;
-    const notifications = await Notification.findByUserId(req.user.id, unread_only === 'true');
-
-    res.status(200).json({
-      success: true,
-      data: notifications
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching notifications',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-});
-
-/**
- * @route   PUT /api/resident/notifications/:id/read
- * @desc    Mark notification as read
- * @access  Private (Resident)
- */
-router.put('/notifications/:id/read', authenticate, async (req, res) => {
-  try {
-    if (req.user.role !== 'resident') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    const notification = await Notification.markAsRead(req.params.id, req.user.id);
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: 'Notification not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Notification marked as read'
-    });
-  } catch (error) {
-    console.error('Error marking notification as read:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
+      message: 'Server error while fetching dashboard',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
 
 module.exports = router;
-

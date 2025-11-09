@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { residentAPI } from '../../services/api'
-import { toast } from 'react-toastify'
-import { format } from 'date-fns'
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { residentAPI } from '../../services/api';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -10,32 +10,31 @@ const Dashboard = () => {
     pending: 0,
     inProgress: 0,
     resolved: 0,
-  })
-  const [recentComplaints, setRecentComplaints] = useState([])
-  const [loading, setLoading] = useState(true)
+  });
+  const [recentComplaints, setRecentComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchDashboardData();
+  }, []);
 
-  const fetchData = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await residentAPI.getComplaints({ limit: 10 })
-      const complaints = response.data.data.complaints
-
-      setRecentComplaints(complaints)
+      const response = await residentAPI.getResidentDashboard();
+      const data = response.data.data;
       setStats({
-        total: response.data.data.pagination.totalComplaints,
-        pending: complaints.filter(c => c.status === 'Pending').length,
-        inProgress: complaints.filter(c => ['In Progress', 'Assigned'].includes(c.status)).length,
-        resolved: complaints.filter(c => ['Resolved', 'Completed'].includes(c.status)).length,
-      })
+        total: data.total,
+        pending: data.pending,
+        inProgress: data.inProgress,
+        resolved: data.resolved,
+      });
+      setRecentComplaints(data.recentComplaints || []);
     } catch (error) {
-      toast.error('Failed to load dashboard data')
+      toast.error('Failed to load dashboard data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getStatusBadge = (status) => {
     const badges = {
@@ -46,19 +45,16 @@ const Dashboard = () => {
       Completed: 'badge-completed',
       Resolved: 'badge-resolved',
       Rejected: 'badge-rejected',
-    }
-    return <span className={`badge ${badges[status] || ''}`}>{status}</span>
-  }
+    };
+    return <span className={`badge ${badges[status] || ''}`}>{status}</span>;
+  };
 
-  if (loading) return <div className="loading">Loading...</div>
+  if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div className="dashboard container">
       <div className="dashboard-header">
         <h1>My Dashboard</h1>
-        <Link to="/resident/complaints" className="btn btn-primary">
-          Submit New Complaint
-        </Link>
       </div>
 
       <div className="dashboard-stats">
@@ -83,7 +79,10 @@ const Dashboard = () => {
       <div className="card">
         <h2>Recent Complaints</h2>
         {recentComplaints.length === 0 ? (
-          <p>No complaints yet. <Link to="/resident/complaints">Submit your first complaint</Link></p>
+          <p>
+            No complaints yet.{' '}
+            <Link to="/resident/complaints">Submit your first complaint</Link>
+          </p>
         ) : (
           <table>
             <thead>
@@ -103,7 +102,11 @@ const Dashboard = () => {
                   <td>{getStatusBadge(complaint.status)}</td>
                   <td>{format(new Date(complaint.created_at), 'MMM dd, yyyy')}</td>
                   <td>
-                    <Link to={`/resident/complaints/${complaint.id}`} className="btn btn-primary" style={{padding: '5px 10px', fontSize: '14px'}}>
+                    <Link
+                      to={`/resident/complaints/${complaint.id}`}
+                      className="btn btn-primary"
+                      style={{ padding: '5px 10px', fontSize: '14px' }}
+                    >
                       View
                     </Link>
                   </td>
@@ -114,8 +117,7 @@ const Dashboard = () => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Dashboard
-
+export default Dashboard;

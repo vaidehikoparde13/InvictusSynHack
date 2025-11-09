@@ -1,11 +1,11 @@
 -- VNIT Grievance Management System Database Schema
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable pgcrypto (for UUID generation)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Users table (Residents, Admins, Workers)
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id VARCHAR(50) UNIQUE,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Complaints table
 CREATE TABLE IF NOT EXISTS complaints (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     resident_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS complaints (
     subcategory VARCHAR(100),
     floor VARCHAR(10),
     room VARCHAR(20),
-    status VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Assigned', 'In Progress', 'Worker Pending', 'Completed', 'Rejected')),
+    status VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved by Admin', 'Assigned', 'In Progress', 'Completed', 'Rejected')),
     priority VARCHAR(20) DEFAULT 'Medium' CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
     assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
     assigned_at TIMESTAMP,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS complaints (
 
 -- Comments table
 CREATE TABLE IF NOT EXISTS comments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     complaint_id UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     comment TEXT NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS comments (
 
 -- Attachments table (for complaint media files)
 CREATE TABLE IF NOT EXISTS attachments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     complaint_id UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
     filename VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 -- Worker performance logs
 CREATE TABLE IF NOT EXISTS worker_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     worker_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     complaint_id UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
     action VARCHAR(50) NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS worker_logs (
 
 -- Notifications table
 CREATE TABLE IF NOT EXISTS notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     complaint_id UUID REFERENCES complaints(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -114,4 +114,3 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 
 CREATE TRIGGER update_complaints_updated_at BEFORE UPDATE ON complaints
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-

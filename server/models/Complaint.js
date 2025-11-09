@@ -2,16 +2,22 @@ const { query } = require('../config/database');
 
 class Complaint {
   static async create(complaintData) {
-    const {
+    let {
       resident_id,
       title,
       description,
       category,
       subcategory,
+      whichWashroom, // 👈 may come from frontend
       floor,
       room,
       priority
     } = complaintData;
+
+    // ✅ Combine washroom + specific location (no DB schema change)
+    if (category?.toLowerCase() === 'washroom' && whichWashroom) {
+      category = `Washroom - ${whichWashroom}`;
+    }
 
     const result = await query(
       `INSERT INTO complaints (resident_id, title, description, category, subcategory, floor, room, priority)
@@ -52,9 +58,10 @@ class Complaint {
       paramCount++;
     }
 
+    // ✅ Smarter category filter (matches "Washroom - T2" when filtering by "Washroom")
     if (filters.category) {
-      sql += ` AND c.category = $${paramCount}`;
-      params.push(filters.category);
+      sql += ` AND c.category ILIKE $${paramCount}`;
+      params.push(`${filters.category}%`);
       paramCount++;
     }
 
@@ -91,9 +98,10 @@ class Complaint {
       paramCount++;
     }
 
+    // ✅ Match "Washroom - T2" even when filtering by "Washroom"
     if (filters.category) {
-      sql += ` AND c.category = $${paramCount}`;
-      params.push(filters.category);
+      sql += ` AND c.category ILIKE $${paramCount}`;
+      params.push(`${filters.category}%`);
       paramCount++;
     }
 
@@ -136,9 +144,10 @@ class Complaint {
       paramCount++;
     }
 
+    // ✅ Count all washroom variations together
     if (filters.category) {
-      sql += ` AND category = $${paramCount}`;
-      params.push(filters.category);
+      sql += ` AND category ILIKE $${paramCount}`;
+      params.push(`${filters.category}%`);
       paramCount++;
     }
 
